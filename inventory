@@ -1,16 +1,16 @@
 [all]
-lxpgsdbasdevs06
-lxpgsdashprdw01
-lxpgsdashprdw02
+l***********s06
+l***********w01
+l***********w02
 
 [wsdc_hosts]
-lxpgsdashprdw01
-lxpgsdashprdw02
+l***********w01
+l***********w02
 
 [sadc_hosts]
-lxpgsdbasdevs06
+l***********s06
 
 [patroni_servers]
-lxpgsdbasdevs06
-lxpgsdashprdw01
-lxpgsdashprdw02
+l***********s06
+l***********w01
+l***********w02
