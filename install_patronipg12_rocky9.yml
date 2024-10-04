@@ -1,0 +1,95 @@
+- name: Installing Postgres 12 libraries
+  yum: 
+   name: /tmp/rpms/12/el9/postgresql12-libs-12.9-2PGDG.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes 
+
+- name: Installing Postgres 12 package
+  yum: 
+   name: /tmp/rpms/12/el9/postgresql12-12.9-2PGDG.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes 
+
+- name: Installing Postgres 12 server
+  yum: 
+   name: /tmp/rpms/12/el9/postgresql12-server-12.9-2PGDG.rhel9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes  
+
+- name: Installing Postgres 12 contrib
+  yum: 
+   name: /tmp/rpms/12/el9/postgresql12-contrib-12.9-2PGDG.rhel9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes  
+
+- name: Installing pgbackrest 
+  yum: 
+   name: /tmp/rpms/12/el9/pgbackrest-2.45-1.rhel9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes  
+
+- name: Installing partman for PG-12
+  yum: 
+   name: /tmp/rpms/12/el9/pg_partman_12-4.7.3-1.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes 
+
+- name: Installing pg_stat_kcache
+  yum: 
+   name: /tmp/rpms/12/el9/pg_stat_kcache_12-2.3.0-1PGDG.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes 
+
+- name: Installing pg_wait_sampling
+  yum: 
+   name: /tmp/rpms/12/el9/pg_wait_sampling_12-1.1.6-1PGDG.rhel9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes 
+
+- name: Installing pg_profile
+  yum: 
+   name: /tmp/rpms/12/el9/pg_profile_12-4.7-1PGDG.rhel9.noarch.rpm
+   state: present
+   disable_gpg_check: yes 
+
+- name: Installing python3-cdiff
+  yum: 
+   name: /tmp/rpms/patroni3/el9/python3-cdiff-1.0-1.rhel9.noarch.rpm
+   state: present
+   disable_gpg_check: yes
+
+- name: Installing python3-etcd
+  yum:
+   name: /tmp/rpms/patroni3/el9/python3-etcd-0.4.5-20.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing python3-ydiff
+  yum:
+   name: /tmp/rpms/patroni3/el9/python3-ydiff-1.2-10.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing python3-psycopg2
+  yum:
+   name: /tmp/rpms/patroni3/el9/python3-psycopg2-2.9.4-1.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing patroni
+  yum:
+   name: /tmp/rpms/patroni3/el9/patroni-3.1.0-1PGDG.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing patroni-etcd
+  yum:
+   name: /tmp/rpms/patroni3/el9/patroni-etcd-3.1.0-1PGDG.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing jq
+  yum: 
+   name: /tmp/rpms/12/el9/jq-1.6-16.el9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes 

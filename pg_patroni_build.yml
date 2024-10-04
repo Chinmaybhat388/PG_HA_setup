@@ -1,0 +1,230 @@
+---
+- name: Install Patroni and Postgres database
+  hosts: all
+  gather_facts: true
+  vars:
+   ram: "{{ ansible_memory_mb.real.total }}"
+   cpu: "{{ ansible_processor_count }}"
+   all: "{{ groups['all'] }}"
+   wsdc: "{{ groups['wsdc_hosts'] }}"
+   sadc: "{{ groups['sadc_hosts'] }}"
+
+  vars_prompt:
+   - name: db_version
+     prompt: Which version of PostgresSQL do you want to install? 12/14/15
+     default: "15"
+     private: false
+
+   - name: env
+     prompt: Which environment is this? Prod / NPE
+     default: "NPE"
+     private: false
+
+   - name: cluster_name
+     prompt: Enter the Patroni cluster name
+     private: false
+
+
+  tasks:
+   - name: Validate db_version
+     fail:
+       msg: "Invalid version specified. Please enter 12, 14, or 15."
+     when: db_version not in ['12', '14', '15']
+     tags: check_db_version
+
+   - name: Validate environment
+     fail:
+      msg: "Invalid environment provided. Please enter either Prod or NPE."
+     when: env not in ['Prod','NPE']
+     tags: check_env
+
+   - name: Validate the cluster name
+     fail:
+      msg: "Enter a valid name for the Patroni cluster."
+     when: cluster_name | length == 0
+     tags: check_cluster_name
+
+   - name: "OS version check"
+     debug: msg="{{ ansible_distribution }} {{ ansible_distribution_major_version }}"
+     register: os_version_check
+     tags: check_os_version
+
+   - name: Check if the mount /postgres_data is created.
+     shell:
+      cmd: "mount | grep -i /postgres_data"
+     ignore_errors: true
+     register: pgdatadir_present
+     tags: check_pgdata_mount
+
+   - name: Check if the mount /postgres_dump is created.
+     shell:
+      cmd: "mount | grep -i /postgres_dump"
+     ignore_errors: true
+     register: pgdumpdir_present
+     tags: check_pgdump_mount
+
+   - name: Check if the mount /postgres_log is created.
+     shell:
+      cmd: "mount | grep -i /postgres_log"
+     ignore_errors: true
+     register: pglogdir_present
+     tags: check_pglog_mount
+
+   - name: Check if all mounts are present
+     debug: msg="All mounts present"
+     when: pgdatadir_present.rc == 0 and pgdumpdir_present.rc == 0 and pglogdir_present.rc == 0
+     register: mount_status
+     tags: get_mount_status
+
+   - name: List the mounts
+     shell:
+      cmd: "df -h /postgres_*"
+     register: list_mounts
+     when: mount_status.msg == "All mounts present"
+     tags: list_all_mounts
+
+   - name: List
+     debug: msg={{ list_mounts.stdout_lines }}
+     tags: list_all_mounts_2
+
+   - name: Copy the rpms to the DB server
+     copy:
+      src: /home/postgres/pg_ansible/rpms
+      dest: /tmp/
+     tags: rpm_copy
+
+   - name: Installing Patroni and PG 15 on Rocky 9
+     include_tasks: install_patronipg15_rocky9.yml
+     when: os_version_check.msg == "Rocky 9" and mount_status.msg == "All mounts present" and db_version == "15"
+     tags: patronipg15_rocky9_install
+
+   - name: Installing PG 15 on Rocky 8
+     include_tasks: install_patronipg15_rocky8.yml
+     when: os_version_check.msg == "Rocky 8" and mount_status.msg == "All mounts present" and db_version == "15"
+     tags: patronipg15_rocky8_install
+
+   - name: Installing PG 14 on Rocky 9
+     include_tasks: install_patronipg14_rocky9.yml
+     when: os_version_check.msg == "Rocky 9" and mount_status.msg == "All mounts present" and db_version == "14"
+     tags: patronipg14_rocky9_install
+
+
+   - name: Installing PG 14 on Rocky 8
+     include_tasks: install_patronipg14_rocky8.yml
+     when: os_version_check.msg == "Rocky 8" and mount_status.msg == "All mounts present" and db_version == "14"
+     tags: patronipg14_rocky8_install
+
+
+   - name: Installing PG 12 on Rocky 9
+     include_tasks: install_patronipg12_rocky9.yml
+     when: os_version_check.msg == "Rocky 9" and mount_status.msg == "All mounts present" and db_version == "12"
+     tags: patronipg12_rocky9_install
+
+
+   - name: Installing PG 12 on Rocky 8
+     include_tasks: install_patronipg12_rocky8.yml
+     when: os_version_check.msg == "Rocky 8" and mount_status.msg == "All mounts present" and db_version == "12"
+     tags: patronipg12_rocky8_install
+
+   - name: HCI prebuild steps
+     include_tasks: HCI_prebuild.yml
+     tags: hci_prebuild
+
+   - name: Create Patroni config directory
+     file:
+      path: /usr/pgsql-{{ db_version }}/patroni/
+      state: directory
+      owner: "postgres"
+      group: "postgres"
+      mode: '0750'
+     tags: patroni_config_directory
+
+   - name: Create Patroni log directory
+     file:
+      path: /postgres_log/patroni/
+      state: directory
+      owner: "postgres"
+      group: "postgres"
+      mode: '0750'
+     tags: patroni_log_directory
+
+   - name: Create patroni configuration file
+     template:
+      src: /home/postgres/pg_ansible/templates/patroni.yml.j2
+      dest: /usr/pgsql-{{ db_version }}/patroni/patroni.yml
+      owner: postgres
+      group: postgres
+      mode: '0755'
+     tags: generate_patroni_config
+
+   - name: Generate Patroni unit file for systemd
+     template:
+      src: /home/postgres/pg_ansible/templates/patroni.service.j2
+      dest: /etc/systemd/system/patroni.service
+      owner: postgres
+      group: postgres
+      mode: '0644'
+     tags: patroni_service_jinja
+
+   - name: Generate pgbackrest config file
+     template:
+      src: /home/postgres/pg_ansible/templates/pgbackrest.conf.j2
+      dest: /etc/pgbackrest.conf
+      owner: postgres
+      group: postgres
+      mode: '0644'
+     tags: pgbackrest_config_jinja
+
+   - name: Add crontab entries
+     include_tasks: HCI_patroni_add_cron.yml
+     tags: hci_add_cron
+
+   - name: Enable Patroni service
+     systemd_service:
+      name: patroni
+      enabled: true
+     tags: service_enable
+
+   - name: Systemctl reload
+     shell:
+      cmd: "systemctl daemon-reload"
+     become: true
+     become_user: root
+     tags: service_reload
+
+   - name: Start Patroni service
+     systemd_service:
+      name: patroni
+      state: started
+      enabled: true
+     tags: service_start
+
+   - name: Setup node exporter
+     include_tasks: Node_exporter.yml
+     tags: node_exp
+
+   - name: Setup Postgres exporter
+     include_tasks: Postgres_exporter.yml
+     tags: pg_exp
+
+   - name: Copy DB configuration script
+     copy:
+      src: /home/postgres/pg_ansible/templates/db_config.sql
+      dest: /home/postgres/
+      owner: postgres
+      group: postgres
+      mode: '0600'
+     tags: dbconfig_copy
+
+   - name: Configure extensions in the database
+     shell:
+      cmd: "psql -p 50001 -d template1 < /home/postgres/db_config.sql"
+     become: true
+     become_user: postgres
+     tags: db_config
+
+   - name: Create a pgbackrest stanza
+     shell: 
+      cmd: "pgbackrest --stanza=main --log-level-console=info stanza-create"
+     become: true
+     become_user: postgres

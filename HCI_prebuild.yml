@@ -1,0 +1,97 @@
+- name: creating group postgres
+  group:
+   name: "postgres"
+   state: present
+  tags: create-postgres-group
+
+- name: creating user
+  user:
+   name: "postgres"
+   group: "postgres"
+   home: "/home/postgres"
+   shell: /bin/bash
+   expires: -1
+   password_expire_max: -1
+   password: "$6$a/gbAQbQ$N2Circ1ajtaIcachQLQAzFS79E7xBpeVUOtTZ19vVEm7ITs//t7hq.WvEC0.aJakUjjgQ6QlY09jGyX2ADTcl0"
+   comment: "bigdatahadoop,n01,Form409-2793,INC000018976289,waivered"
+  tags: create-postgres-user
+
+- name: Create .ssh directory if it does not exist
+  file:
+   path: /home/postgres/.ssh
+   state: directory
+   owner: "postgres"
+   mode: '0700'
+
+- name: check
+  become: true
+  become_user: 'postgres'
+  shell: "touch /home/postgres/.ssh/authorized_keys"
+
+- name: create 'authorized_keys' shell if not exist
+  shell: "grep 'lxpgscarbdevs05' /home/postgres/.ssh/authorized_keys|wc -l"
+  register: scanout
+
+- name: Print Key entry availablilty - lxpgscarbdevs05
+  ansible.builtin.debug:
+   msg: Value {{ scanout.stdout }}  Value {{ scanout }}
+
+- name: run linein
+  lineinfile:
+   state: present
+   insertafter: EOF
+   dest: /home/postgres/.ssh/authorized_keys
+   line: "{{ item }}"
+  with_items:
+   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQChtLhgekxC2MHWrnzzYIhjfzaB7JJeh7AIsPn5T1wdztnOnEFoaHIRMrn17pyCh4OzaSLpIkEtIU91646UhvgXsqy7IVmcRHgeLFQuRJWk4a/cNxiTMoACZhzZwlN452zHHjABRREr37Mmzm0WgsE8n/Vtf6TMiNOnh6g9pMoo6Ru0dBBwD6MopMlQglTFJijj1vvv8Zd93PK1D6d+yqN5wNVjsFdaAAg4bbHpOMs93/78TCFUEOY+/eeBTbM6/Me3e8Pv2oIw4du7FRHlbrwoeD8A3m3JStrWMI7eTMOMgmVrbIV/p9BZLkx03OpL63cQRoga3q1kpV/Q1YQ2HuN3dP+eIboeaQhs73UTjl1YeQj/c//nWvujbWKs8L/I3x8/wHawYQDiWa36bU7u/48Kr9PQL8NZW/hFkTxIW4edIokbKLWXpIKgNlb4sYWZJOt0fNVxrXbmx/NndLf9OWw9cHLBli2Ut7G3NDRT3aQkRIHs9v5lPi5vQaK6A6KivR8= postgres@lxpgscarbdevs05
+  when: scanout.stdout == '0'
+
+- name: check
+  shell: "grep 'irm1' /home/postgres/.ssh/authorized_keys|wc -l"
+  register: scanout2
+
+- name: Print Key entry availablilty - irm1
+  ansible.builtin.debug:
+   msg: Value {{ scanout2.stdout }}  Value {{ scanout2 }}
+
+- name: run linein
+  lineinfile:
+   state: present
+   insertafter: EOF
+   dest: /home/postgres/.ssh/authorized_keys
+   line: "{{ item }}"
+  with_items:
+   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDDdI70djlqfLmdes6Rr1P+HQu791oISU8jFrkzvZC1JRrGjKl+BKAw2VfJrm2tgdjbTANtzqVps0okgYcVDogyJMDsXtXd2dy0mCaYu2w8ZTVqR25GDTbORQQA6SxJ1eeCyqsjr7w3R7uucvL1WSGZbPSef/AltHsf3yQS/fKRH4g6mlD7tVudlEFVrT0yqzFVZDAno6QRGhdWhtBaRT9Vungp/1iKTXKXN5qiwiaCEgoIpFZIzpYfUcQCBOX7cKwmk6m8oDZ1OEx5pJJH8SvM//fYrZRE8rOHz/6vnJ8FcdTyqxG9Xtk+mAcMBy/Z0bODy1RTelTbIlQ3FpZc6lE3 postgres@irm1
+  when: scanout.stdout == '0'
+
+- name: setting FS ownerships
+  file:
+   path: "/home/postgres"
+   owner: "postgres"
+   group: "postgres"
+   mode: "0755"
+  tags: set-postgres_data-fs-ownerships
+
+- name: setting FS ownerships
+  file:
+   path: "/postgres_data"
+   owner: "postgres"
+   group: "postgres"
+   mode: "0700"
+  tags: set-postgres_data-fs-ownerships
+
+- name: setting FS ownerships
+  file:
+   path: "/postgres_dump"
+   owner: "postgres"
+   group: "postgres"
+   mode: "0700"
+  tags: set-postgres_dump-fs-ownerships
+
+- name: setting FS ownerships
+  file:
+   path: "/postgres_log"
+   owner: "postgres"
+   group: "postgres"
+   mode: "0700"
+  tags: set-postgres_log-fs-ownerships 

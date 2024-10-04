@@ -1,0 +1,113 @@
+- name: Create directory /home/postgres/scripts if it doesnt exist
+  file:
+   path: /home/postgres/scripts
+   state: directory
+   owner: postgres
+   group: postgres
+   mode: '0740'
+
+- name: Create directory /home/postgres/scripts/logs if it doesnt exist
+  file:
+   path: /home/postgres/scripts/logs
+   state: directory
+   owner: postgres
+   group: postgres
+   mode: '0740'
+
+- name: Create directory /home/postgres/logs if it doesnt exist
+  ignore_errors: true
+  file:
+   path: /home/postgres/logs
+   state: directory
+   owner: postgres
+   group: postgres
+   mode: '0740'
+
+- name: Create directory /postgres_dump/dbbackup/  if it doesnt exist
+  ignore_errors: true
+  file:
+   path: /postgres_dump/dbbackup/
+   state: directory
+   owner: postgres
+   group: postgres
+   mode: '0740'
+
+- name: Create directory /postgres_dump/dbbackup/pg_dump  if it doesnt exist
+  ignore_errors: true
+  file:
+   path: /postgres_dump/dbbackup/pg_dump/
+   state: directory
+   owner: postgres
+   group: postgres
+   mode: '0740'
+
+- name: Create directory /postgres_dump/dbbackup/pgbackrest if it doesnt exist
+  ignore_errors: true
+  file:
+   path: /postgres_dump/dbbackup/pgbackrest/
+   state: directory
+   owner: postgres
+   group: postgres
+   mode: '0740'
+
+- name: Create directory /postgres_dump/dbbackup/pgbackrest/logs if it doesnt exist
+  ignore_errors: true
+  file:
+   path: /postgres_dump/dbbackup/pgbackrest/logs
+   state: directory
+   owner: postgres
+   group: postgres
+   mode: '0740'
+
+- name: Transfer executable script
+  copy: 
+   src: /home/postgres/pg_ansible/scripts/ 
+   dest: /home/postgres/scripts 
+   owner: postgres
+   group: postgres
+   mode: 0740
+
+- name: Transfer bash profile
+  copy: 
+   src: /home/postgres/pg_ansible/bash_profile 
+   dest: /home/postgres/.bash_profile 
+   owner: postgres
+   group: postgres
+   mode: 0740
+
+- name: check whether user_name has permission to create crontab
+  shell: 'grep "postgres" /etc/cron.allow'
+  register: user_status
+  failed_when: "user_status.rc == 2"
+  changed_when: false
+  become: yes
+
+- name: Add user to /etc/cron.allow if it doesn't exist
+  shell: 'echo "postgres" | sudo tee -a /etc/cron.allow'
+  when:  user_status.rc == 1
+
+- name: Set permissions script dir
+  file:
+   path: /home/postgres/scripts
+   owner: postgres
+   group: postgres
+   mode: '0740'
+   state: directory
+   recurse: yes
+
+- name: Delete lost+found in Data directory
+  become: yes
+  become_user: root
+  ignore_errors: true
+  command: rm -rf /postgres_data/lost+found
+
+- name: Delete lost+found in log directory
+  become: yes
+  become_user: root
+  ignore_errors: true
+  command: rm -rf /postgres_log/lost+found
+
+- name: Schedule Cron Job
+  become: yes
+  become_user: postgres
+  command: bash  /home/postgres/scripts/cron.sh

@@ -1,0 +1,96 @@
+- name: Installing Postgres 15 libraries
+  yum: 
+   name: /tmp/rpms/15_2/el9/postgresql15-libs-15.2-1PGDG.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes 
+
+- name: Installing Postgres 15 package
+  yum: 
+   name: /tmp/rpms/15_2/el9/postgresql15-15.2-1PGDG.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes 
+
+- name: Installing Postgres 15 server
+  yum: 
+   name: /tmp/rpms/15_2/el9/postgresql15-server-15.2-1PGDG.rhel9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes 
+
+- name: Installing Postgres 15 contrib
+  yum: 
+   name: /tmp/rpms/15_2/el9/postgresql15-contrib-15.2-1PGDG.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing pgbackrest 
+  yum: 
+   name: /tmp/rpms/15_2/el9/pgbackrest-2.45-1.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing partman for PG-15
+  yum: 
+   name: /tmp/rpms/15_2/el9/pg_partman_15-4.7.3-1.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes
+  
+
+- name: Installing pg_stat_kcache
+  yum: 
+   name: /tmp/rpms/15_2/el9/pg_stat_kcache_15-2.3.0-1PGDG.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing pg_wait_sampling
+  yum: 
+   name: /tmp/rpms/15_2/el9/pg_wait_sampling_15-1.1.6-1PGDG.rhel9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes
+
+- name: Installing pg_profile
+  yum: 
+   name: /tmp/rpms/15_2/el9/pg_profile_15-4.7-1PGDG.rhel9.noarch.rpm
+   state: present
+   disable_gpg_check: yes
+
+- name: Installing python3-cdiff
+  yum: 
+   name: /tmp/rpms/patroni3/el9/python3-cdiff-1.0-1.rhel9.noarch.rpm
+   state: present
+   disable_gpg_check: yes
+
+- name: Installing python3-etcd
+  yum:
+   name: /tmp/rpms/patroni3/el9/python3-etcd-0.4.5-20.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing python3-ydiff
+  yum:
+   name: /tmp/rpms/patroni3/el9/python3-ydiff-1.2-10.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing python3-psycopg2
+  yum:
+   name: /tmp/rpms/patroni3/el9/python3-psycopg2-2.9.4-1.rhel9.x86_64.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing patroni
+  yum:
+   name: /tmp/rpms/patroni3/el9/patroni-3.1.0-1PGDG.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing patroni-etcd
+  yum:
+   name: /tmp/rpms/patroni3/el9/patroni-etcd-3.1.0-1PGDG.rhel9.noarch.rpm
+   state: present 
+   disable_gpg_check: yes
+
+- name: Installing jq
+  yum: 
+   name: /home/postgres/pg_ansible/rpms/15_2/el9/jq-1.6-16.el9.x86_64.rpm
+   state: present
+   disable_gpg_check: yes 

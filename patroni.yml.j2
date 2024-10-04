@@ -1,0 +1,129 @@
+scope: {{ cluster_name }}
+name: {{ inventory_hostname }}
+namespace: /service/
+restapi:
+  listen: {{ ansible_all_ipv4_addresses[0] }}:8008
+  connect_address: {{ ansible_all_ipv4_addresses[0] }}:8008
+
+log:
+  level: DEBUG
+  dir: /postgres_log/patroni
+  file_num: 4
+  file_size: 262144000
+
+etcd:
+{%if env == "NPE" %}
+  hosts: 172.29.111.146:2379,172.29.111.144:2379,172.29.111.150:2379,172.29.151.131:2379,172.29.151.164:2379
+{% endif %}
+{%if env == "Prod" %}
+  hosts: 172.26.232.102:2379,172.26.232.103:2379,172.29.182.16:2379,172.29.98.104:2379,172.26.100.52:2379
+{% endif %}
+
+
+bootstrap:
+  method: initdb
+  dcs:
+    failsafe_mode: true
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    maximum_lag_on_failover: 1048576
+    master_start_timeout: 300
+    synchronous_mode: false
+    synchronous_mode_strict: false
+    synchronous_node_count: 1
+
+    postgresql:
+      use_pg_rewind: true
+      use_slots: true
+      parameters:
+        archive_command: pgbackrest --stanza=main archive-push %p
+        archive_mode: on
+        archive_timeout: 1800s
+        autovacuum: on
+        autovacuum_analyze_scale_factor: 0.1
+        autovacuum_max_workers: 3
+        checkpoint_completion_target: 0.5
+        checkpoint_timeout: 5min
+        default_text_search_config: 'pg_catalog.english'
+        dynamic_shared_memory_type: posix
+        effective_cache_size: {{ (ram | int * 0.75) | int }}MB
+        effective_io_concurrency: 100
+        hot_standby: on
+        log_connections: on
+        log_checkpoints: on
+        log_directory: '/postgres_log/'
+        log_filename: 'postgresql-%a.log'
+        log_line_prefix:  '%t [%p-%l] %q%u@%d@%r'
+        log_lock_waits: on
+        log_rotation_age: 1d
+        log_rotation_size: 0
+        log_temp_files: 0
+        log_truncate_on_rotation: on
+        log_statement: 'ddl'
+        logging_collector: on
+        maintenance_work_mem: {{ (ram | int * 0.064) | int }}MB
+        max_connections: 300
+        max_replication_slots: 10
+        max_wal_senders: 10
+        max_wal_size: 1GB
+        min_wal_size: 80MB
+        search_path: 'public'
+        seq_page_cost: 1
+        shared_buffers: {{ (ram | int * 0.25) | int }}MB
+        shared_preload_libraries: 'pg_stat_statements,pg_stat_kcache'
+        superuser_reserved_connections: 5
+        timezone: 'US/Eastern'
+        synchronous_commit: on
+        track_activities: on
+        track_activity_query_size: 32786
+        track_counts: on
+        wal_buffers: 32MB
+{% if db_version != "12" %}
+        wal_keep_size=1024
+{% endif %}
+        wal_level: replica
+        work_mem: {{ (ram | int * 0.00042) | int }}MB
+
+  initdb:  # List options to be passed on to initdb
+    - encoding: UTF8
+    - data-checksums
+
+  pg_hba:  # Add following lines to pg_hba.conf after running 'initdb'
+      - host   all          all         0.0.0.0/0          md5
+      - local  all          postgres                       trust
+      - host   replication  replicator  0.0.0.0/0          md5
+{% for host in all %}
+      - host   replication  replicator  {{ hostvars[host].ansible_all_ipv4_addresses[0] }}/32    md5
+{% endfor %}
+
+postgresql:
+  listen: {{ ansible_all_ipv4_addresses[0] }},127.0.0.1:50001
+  connect_address: {{ ansible_all_ipv4_addresses[0] }}:50001
+  use_unix_socket: true
+  data_dir: /postgres_data/{{ db_version }}/main
+  bin_dir: /usr/pgsql-{{ db_version }}/bin
+  pgpass: /home/postgres/.pgpass
+  authentication:
+    replication:
+      username: replicator
+      password: replicator
+    superuser:
+      username: postgres
+      password: p0s1gr3s
+  parameters:
+    unix_socket_directories: /var/run/postgresql/
+  remove_data_directory_on_rewind_failure: false
+  remove_data_directory_on_diverged_timelines: false
+
+
+  create_replica_methods:
+    - basebackup
+  basebackup:
+    max-rate: '300M'
+    checkpoint: 'fast'
+
+{% if inventory_hostname in sadc %}
+tags:
+  nofailover: true
+{% endif %}

@@ -1,0 +1,16 @@
+[all]
+lxpgsdbasdevs06
+lxpgsdashprdw01
+lxpgsdashprdw02
+
+[wsdc_hosts]
+lxpgsdashprdw01
+lxpgsdashprdw02
+
+[sadc_hosts]
+lxpgsdbasdevs06
+
+[patroni_servers]
+lxpgsdbasdevs06
+lxpgsdashprdw01
+lxpgsdashprdw02

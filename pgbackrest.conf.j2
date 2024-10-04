@@ -1,0 +1,10 @@
+[main]
+pg1-path=/postgres_data/{{ db_version }}/main
+pg1-port=50001
+
+[global]
+repo1-path=/postgres_dump/dbbackup/pgbackrest
+repo1-retention-full=2
+process-max=2
+compress-type=gz
+compress-level=2
