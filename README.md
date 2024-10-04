@@ -6,6 +6,5 @@ Postgres   - 12/14/15 (Including pg_profile, pg_partman, pg_stat_kcache, pg_wait
 Patroni    - 3.1
 Pgbackrest - 2.45
 
-
 To run the playbook : 
 sudo ansible-playbook -i inventory pg_patroni_build.yml
