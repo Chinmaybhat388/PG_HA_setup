@@ -1,0 +1,325 @@
+---
+- name: Add hosts dynamically from Jenkins.
+  hosts: localhost
+  connection: local
+  tasks:
+  - name: Add host to WSDC group
+    add_host:
+      name: "{{ item }}"
+      groups:
+       - wsdc_hosts
+       - patroni_servers
+    loop: "{{ WSDC_hosts.split(',') }}"
+    when: WSDC_hosts | length > 0
+    tags: add_host_wsdc
+
+  - name: Add host to SADC group
+    add_host:
+      name: "{{ item }}"
+      groups:
+       - sadc_hosts
+       - patroni_servers
+    loop: "{{ SADC_hosts.split(',') }}"
+    when: SADC_hosts | length > 0
+    tags: add_host_sadc
+
+- name: Install Patroni and Postgres database
+  hosts: patroni_servers
+  gather_facts: true
+  vars:
+   ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+   ram: "{{ ansible_memory_mb.real.total }}"
+   cpu: "{{ ansible_processor_count }}"
+   patroni_servers: "{{ groups['patroni_servers'] }}"
+   wsdc: "{{ groups['wsdc_hosts'] }}"
+   sadc: "{{ groups['sadc_hosts'] }}"
+
+
+  tasks:
+   - name: Validate db_version
+     fail:
+       msg: "Invalid version specified. Please enter 12, 14, 15 or 16."
+     when: db_version not in ['12', '14', '15', '16']
+     tags: check_db_version
+
+   - name: Validate environment
+     fail:
+      msg: "Invalid environment provided. Please enter either Prod or NPE."
+     when: env not in ['Prod','NPE']
+     tags: check_env
+
+   - name: Validate the cluster name
+     fail:
+      msg: "Enter a valid name for the Patroni cluster."
+     when: cluster_name | length == 0
+     tags: check_cluster_name
+
+   - name: Validate application name
+     fail:
+       msg: "App name not specified."
+     when: app_name | length == 0
+     tags: check_app_name
+
+   - name: Validate database owner
+     fail:
+       msg: "DB owner name not specified."
+     when: db_owner | length == 0
+     tags: check_db_owner
+
+   - name: Validate Group DL
+     fail:
+       msg: "Group DL not specified."
+     when: group_dl | length == 0
+     tags: check_group_dl
+
+   - name: Validate Database environment
+     fail:
+       msg: "DB environment not specified."
+     when: db_env | length == 0
+     tags: check_db_env
+
+   - name: Validate app tier classification
+     fail:
+       msg: "Application tier not specified."
+     when: app_tier | length == 0
+     tags: check_app_tier
+
+   - name: Validate application ID
+     fail:
+       msg: "Application ID not specified."
+     when: app_id | length == 0
+     tags: check_app_id
+
+   - name: Validate network zone
+     fail:
+       msg: "Network zone not specified."
+     when: network_zone | length == 0
+     tags: check_network_zone
+
+   - name: "OS version check"
+     debug: msg="{{ ansible_distribution }} {{ ansible_distribution_major_version }}"
+     register: os_version_check
+     tags: check_os_version
+
+   - name: Check if the mount /postgres_data is created.
+     shell:
+      cmd: "mount | grep -i /postgres_data"
+     ignore_errors: true
+     register: pgdatadir_present
+     tags: check_pgdata_mount
+
+   - name: Check if the mount /postgres_dump is created.
+     shell:
+      cmd: "mount | grep -i /postgres_dump"
+     ignore_errors: true
+     register: pgdumpdir_present
+     tags: check_pgdump_mount
+
+   - name: Check if the mount /postgres_log is created.
+     shell:
+      cmd: "mount | grep -i /postgres_log"
+     ignore_errors: true
+     register: pglogdir_present
+     tags: check_pglog_mount
+
+   - name: Check if all mounts are present
+     debug: msg="All mounts present"
+     when: pgdatadir_present.rc == 0 and pgdumpdir_present.rc == 0 and pglogdir_present.rc == 0
+     register: mount_status
+     tags: get_mount_status
+
+   - name: List the mounts
+     shell:
+      cmd: "df -h /postgres_*"
+     register: list_mounts
+     when: mount_status.msg == "All mounts present"
+     tags: list_all_mounts
+
+   - name: List
+     debug: msg={{ list_mounts.stdout_lines }}
+     tags: list_all_mounts_2
+
+   - name: Copy the rpms to the DB server
+     copy:
+      src: /postgres_auto/pg_ansible/rpms
+      dest: /tmp/
+     tags: rpm_copy
+
+   - name: Installing Patroni and PG 16 on Rocky 9
+     include_tasks: install_patronipg16_rocky9.yml
+     when: os_version_check.msg == "Rocky 9" and mount_status.msg == "All mounts present" and db_version == "16"
+     tags: patronipg16_rocky9_install
+
+   - name: Installing Patroni and PG 16 on Rocky 8
+     include_tasks: install_patronipg16_rocky8.yml
+     when: os_version_check.msg == "Rocky 8" and mount_status.msg == "All mounts present" and db_version == "16"
+     tags: patronipg16_rocky8_install
+
+   - name: Installing Patroni and PG 15 on Rocky 9
+     include_tasks: install_patronipg15_rocky9.yml
+     when: os_version_check.msg == "Rocky 9" and mount_status.msg == "All mounts present" and db_version == "15"
+     tags: patronipg15_rocky9_install
+
+   - name: Installing PG 15 on Rocky 8
+     include_tasks: install_patronipg15_rocky8.yml
+     when: os_version_check.msg == "Rocky 8" and mount_status.msg == "All mounts present" and db_version == "15"
+     tags: patronipg15_rocky8_install
+
+   - name: Installing PG 14 on Rocky 9
+     include_tasks: install_patronipg14_rocky9.yml
+     when: os_version_check.msg == "Rocky 9" and mount_status.msg == "All mounts present" and db_version == "14"
+     tags: patronipg14_rocky9_install
+
+
+   - name: Installing PG 14 on Rocky 8
+     include_tasks: install_patronipg14_rocky8.yml
+     when: os_version_check.msg == "Rocky 8" and mount_status.msg == "All mounts present" and db_version == "14"
+     tags: patronipg14_rocky8_install
+
+
+   - name: Installing PG 12 on Rocky 9
+     include_tasks: install_patronipg12_rocky9.yml
+     when: os_version_check.msg == "Rocky 9" and mount_status.msg == "All mounts present" and db_version == "12"
+     tags: patronipg12_rocky9_install
+
+
+   - name: Installing PG 12 on Rocky 8
+     include_tasks: install_patronipg12_rocky8.yml
+     when: os_version_check.msg == "Rocky 8" and mount_status.msg == "All mounts present" and db_version == "12"
+     tags: patronipg12_rocky8_install
+
+   - name: HCI prebuild steps
+     include_tasks: HCI_prebuild.yml
+     tags: hci_prebuild
+
+   - name: Create Patroni config directory
+     file:
+      path: /usr/pgsql-{{ db_version }}/patroni/
+      state: directory
+      owner: "postgres"
+      group: "postgres"
+      mode: '0750'
+     tags: patroni_config_directory
+
+   - name: Create Patroni log directory
+     file:
+      path: /postgres_log/patroni/
+      state: directory
+      owner: "postgres"
+      group: "postgres"
+      mode: '0750'
+     tags: patroni_log_directory
+
+   - name: Create patroni configuration file
+     template:
+      src: /postgres_auto/pg_ansible/templates/patroni.yml.j2
+      dest: /usr/pgsql-{{ db_version }}/patroni/patroni.yml
+      owner: postgres
+      group: postgres
+      mode: '0755'
+     tags: generate_patroni_config
+
+   - name: Generate Patroni unit file for systemd
+     template:
+      src: /postgres_auto/pg_ansible/templates/patroni.service.j2
+      dest: /etc/systemd/system/patroni.service
+      owner: postgres
+      group: postgres
+      mode: '0644'
+     tags: patroni_service_jinja
+
+   - name: Generate pgbackrest config file
+     template:
+      src: /postgres_auto/pg_ansible/templates/pgbackrest.conf.j2
+      dest: /etc/pgbackrest.conf
+      owner: postgres
+      group: postgres
+      mode: '0644'
+     tags: pgbackrest_config_jinja
+
+   - name: Add crontab entries
+     include_tasks: HCI_patroni_add_cron.yml
+     tags: hci_add_cron
+
+   - name: Enable Patroni service
+     systemd_service:
+      name: patroni
+      enabled: true
+     tags: service_enable
+
+   - name: Systemctl reload
+     shell:
+      cmd: "systemctl daemon-reload"
+     become: true
+     become_user: root
+     tags: service_reload
+
+   - name: Start Patroni service
+     systemd_service:
+      name: patroni
+      state: started
+      enabled: true
+     tags: service_start
+
+   - name: Start sysstat
+     systemd_service:
+      name: sysstat
+      enabled: true
+      state: started
+     ignore_errors: true
+     tags: sysstat_start
+
+   - name: Setup node exporter
+     include_tasks: Node_exporter.yml
+     tags: node_exp
+
+   - name: Setup Postgres exporter
+     include_tasks: Postgres_exporter.yml
+     tags: pg_exp
+
+   - name: Copy DB configuration script
+     copy:
+      src: /postgres_auto/pg_ansible/templates/db_config.sql
+      dest: /home/postgres/
+      owner: postgres
+      group: postgres
+      mode: '0600'
+     tags: dbconfig_copy
+
+   - name: Configure extensions in the database
+     shell:
+      cmd: "psql -p 50001 -d template1 < /home/postgres/db_config.sql"
+     become: true
+     become_user: postgres
+     tags: db_config
+
+   - name: Create a pgbackrest stanza
+     shell:
+      cmd: "pgbackrest --stanza=main --log-level-console=info stanza-create"
+     become: true
+     become_user: postgres
+     when: env == "Prod"
+     ignore_errors: true
+
+   - name: Insert into pg_db_inventory table for each host
+     community.postgresql.postgresql_query:
+      login_host: "lxpgsmsbrprdw01"
+      port: 50001
+      db: msb
+      login_user: postgres
+      query: "INSERT INTO pg_db_inventory (server_name, application_name, database_owner, group_dl, hosted_in, tier_classification, database_env, application_id, provisioned_date, database_type, used_or_not, network_zone) values (%s,%s,%s,%s,'HCI ONPREM',%s,%s,%s, CURRENT_TIMESTAMP, 'PostgreSQL', 'Used',%s)"
+      positional_args:
+        - "{{ item }}"
+        - "{{ app_name }}"
+        - "{{ db_owner }}"
+        - "{{ group_dl }}"
+        - "{{ app_tier }}"
+        - "{{ db_env }}"
+        - "{{ app_id }}"
+        - "{{ network_zone }}"
+     loop: "{{ groups['patroni_servers'] }}"
+     delegate_to: 172.26.8.131
+     become: true
+     become_user: postgres
+     when: inventory_hostname == groups['patroni_servers'][0]    ##Added to prevent duplicate entries in the database.
+     tags: Insert_into_pg_db_inventory
